@@ -1,8 +1,3 @@
-// Para compilar
-//gcc -Wall sd.c -o sd.out -lpthread -lrt
-// Para testar
-//./sd.out 1 1 100 0
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -18,7 +13,7 @@ int *buffer;
 int verbose, N;
 int consumed_and_evaluated = 0, produced_and_shipped = 0;
 pthread_mutex_t mutex;
-sem_t empty, full, threadsProducer, threadsConsumer;
+sem_t empty, full, enough_produced, enough_consumed;
 
 
 int randomNumber(){
@@ -100,7 +95,7 @@ void *producer(){
     }
 
     // Avisa que a produção terminou
-    sem_post(&threadsProducer);
+    sem_post(&enough_produced);
 
 }
 
@@ -143,7 +138,7 @@ void *consumer(){
     }
 
     // Avisa que a consumo terminou
-    sem_post(&threadsConsumer);
+    sem_post(&enough_consumed);
 
 }
 
@@ -185,23 +180,23 @@ int main (int argc, char *argv[]) {
     }
 
 	// Close the factores
-    sem_wait(&threadsProducer);
+    sem_wait(&enough_produced);
     for (int i = 0; i < Np; i++){
         pthread_cancel(producers[i]);
     }
 
 	// Close the stores
-    sem_wait(&threadsConsumer); // aguardando as threads consumidoras receberem 10⁵ números.
+    sem_wait(&enough_consumed);
     for (int i = 0; i < Nc; i++){
         pthread_cancel(consumers[i]);
     }
 
-	// Erase helpers
-	pthread_mutex_destroy(&mutex);
+    // Erase helpers
+    pthread_mutex_destroy(&mutex);
     sem_destroy(&empty);
     sem_destroy(&full);
-    sem_destroy(&threadsProducer);
-    sem_destroy(&threadsConsumer);
+    sem_destroy(&enough_produced);
+    sem_destroy(&enough_consumed);
 	free(buffer);
 
     finish = clock();
